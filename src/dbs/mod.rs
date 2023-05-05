@@ -31,7 +31,7 @@ pub async fn init(
 		false => info!(target: LOG, "Database strict mode is disabled"),
 	};
 	// Parse and setup the desired kv datastore
-	let dbs = Datastore::new(&opt.path).await?.query_timeout(query_timeout);
+	let dbs = Datastore::new_with_bootstrap(&opt.path).await?.query_timeout(query_timeout);
 	// Store database instance
 	let _ = DB.set(dbs);
 	// All ok

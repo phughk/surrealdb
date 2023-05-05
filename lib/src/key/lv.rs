@@ -1,6 +1,6 @@
-use crate::sql::uuid::Uuid;
 use derive::Key;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Serialize, Deserialize, Key)]
 pub struct Lv<'a> {
@@ -61,7 +61,7 @@ mod tests {
 			"test",
 			"test",
 			"test",
-			Uuid::default(),
+			Uuid::new_v4(),
 		);
 		let enc = Lv::encode(&val).unwrap();
 		let dec = Lv::decode(&enc).unwrap();

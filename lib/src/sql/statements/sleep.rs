@@ -68,7 +68,6 @@ mod tests {
 
 	use super::*;
 	use crate::dbs::test::mock;
-	use crate::dbs::Auth;
 	use std::time::SystemTime;
 
 	#[test]
@@ -93,7 +92,7 @@ mod tests {
 	async fn test_sleep_compute() {
 		let sql = "SLEEP 500ms";
 		let time = SystemTime::now();
-		let opt = Options::new(Auth::Kv);
+		let opt = Options::default();
 		let (ctx, _, txn) = mock().await;
 		let (_, stm) = sleep(sql).unwrap();
 		let value = stm.compute(&ctx, &opt, &txn, None).await.unwrap();

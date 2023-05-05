@@ -1,5 +1,11 @@
 ///
 /// KV              /
+///
+/// ND              /!nd{nd}
+/// LQ              /!nd{nd}*{ns}*{db}!lq{lq}
+///
+/// HB              /!hb{ts}/{nd}
+///
 /// NS              /!ns{ns}
 ///
 /// Namespace       /*{ns}
@@ -14,7 +20,6 @@
 /// PA              /*{ns}*{db}!pa{pa}
 /// SC              /*{ns}*{db}!sc{sc}
 /// TB              /*{ns}*{db}!tb{tb}
-/// LQ              /*{ns}*{db}!lq{lq}
 ///
 /// Scope           /*{ns}*{db}±{sc}
 /// ST              /*{ns}*{db}±{sc}!st{tk}
@@ -48,8 +53,10 @@ pub mod bp; // Stores BTree nodes for postings
 pub mod bs; // Stores FullText index states
 pub mod bt; // Stores BTree nodes for terms
 pub mod bu; // Stores terms for term_ids
+pub mod cl; // Stores cluster membership information
 pub mod database; // Stores the key prefix for all keys under a database
 pub mod db; // Stores a DEFINE DATABASE config definition
+pub mod debug;
 pub mod dl; // Stores a DEFINE LOGIN ON DATABASE config definition
 pub mod dt; // Stores a DEFINE LOGIN ON DATABASE config definition
 pub mod ev; // Stores a DEFINE EVENT config definition
@@ -57,6 +64,7 @@ pub mod fc; // Stores a DEFINE FUNCTION config definition
 pub mod fd; // Stores a DEFINE FIELD config definition
 pub mod ft; // Stores a DEFINE TABLE AS config definition
 pub mod graph; // Stores a graph edge pointer
+pub mod hb; // Stores a heartbeat per registered cluster node
 pub mod index; // Stores an index entry
 pub mod ix; // Stores a DEFINE INDEX config definition
 pub mod kv; // Stores the key prefix for all keys
@@ -72,7 +80,7 @@ pub mod scope; // Stores the key prefix for all keys under a scope
 pub mod st; // Stores a DEFINE TOKEN ON SCOPE config definition
 pub mod table; // Stores the key prefix for all keys under a table
 pub mod tb; // Stores a DEFINE TABLE config definition
-pub mod thing;
+pub mod thing; // Stores a record id
 
 const CHAR_PATH: u8 = 0xb1; // ±
 const CHAR_INDEX: u8 = 0xa4; // ¤

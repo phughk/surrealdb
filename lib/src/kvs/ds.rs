@@ -1,27 +1,49 @@
-use super::tx::Transaction;
 use crate::ctx::Context;
+use crate::dbs::cl::Timestamp;
 use crate::dbs::Attach;
 use crate::dbs::Executor;
+use crate::dbs::Notification;
 use crate::dbs::Options;
 use crate::dbs::Response;
 use crate::dbs::Session;
 use crate::dbs::Variables;
 use crate::err::Error;
+use crate::key::hb::Hb;
+use crate::key::lq;
+use crate::key::lv::Lv;
 use crate::kvs::LOG;
 use crate::sql;
 use crate::sql::Query;
 use crate::sql::Value;
+use channel::Receiver;
 use channel::Sender;
 use futures::lock::Mutex;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::instrument;
+use tracing::trace;
+use uuid::Uuid;
+
+use super::tx::Transaction;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+/// Used for cluster logic to move LQ data to LQ cleanup code
+pub struct LqValue {
+	pub cl: Uuid,
+	pub ns: String,
+	pub db: String,
+	pub tb: String,
+	pub lq: Uuid,
+}
 
 /// The underlying datastore instance which stores the dataset.
 #[allow(dead_code)]
 pub struct Datastore {
+	pub(super) id: Uuid,
 	pub(super) inner: Inner,
+	pub(super) send: Sender<Notification>,
+	pub(super) recv: Receiver<Notification>,
 	query_timeout: Option<Duration>,
 }
 
@@ -102,6 +124,13 @@ impl Datastore {
 	/// # }
 	/// ```
 	pub async fn new(path: &str) -> Result<Datastore, Error> {
+		let id = Uuid::new_v4();
+		Self::new_full(path, id).await
+	}
+
+	// For testing
+	pub async fn new_full(path: &str, node_id: Uuid) -> Result<Datastore, Error> {
+		// Initiate the desired datastore
 		let inner = match path {
 			"memory" => {
 				#[cfg(feature = "kv-mem")]
@@ -112,7 +141,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-mem"))]
-				return Err(Error::Ds("Cannot connect to the `memory` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `memory` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// Parse and initiate an File database
 			s if s.starts_with("file:") => {
@@ -126,7 +155,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-rocksdb"))]
-				return Err(Error::Ds("Cannot connect to the `rocksdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `rocksdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// Parse and initiate an RocksDB database
 			s if s.starts_with("rocksdb:") => {
@@ -140,7 +169,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-rocksdb"))]
-				return Err(Error::Ds("Cannot connect to the `rocksdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `rocksdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// Parse and initiate an SpeeDB database
 			s if s.starts_with("speedb:") => {
@@ -168,7 +197,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-indxdb"))]
-				return Err(Error::Ds("Cannot connect to the `indxdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `indxdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// Parse and initiate a TiKV database
 			s if s.starts_with("tikv:") => {
@@ -182,7 +211,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-tikv"))]
-				return Err(Error::Ds("Cannot connect to the `tikv` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `tikv` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// Parse and initiate a FoundationDB database
 			s if s.starts_with("fdb:") => {
@@ -196,7 +225,7 @@ impl Datastore {
 					v
 				}
 				#[cfg(not(feature = "kv-fdb"))]
-				return Err(Error::Ds("Cannot connect to the `foundationdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
+                return Err(Error::Ds("Cannot connect to the `foundationdb` storage engine as it is not enabled in this build of SurrealDB".to_owned()));
 			}
 			// The datastore path is not valid
 			_ => {
@@ -204,8 +233,13 @@ impl Datastore {
 				Err(Error::Ds("Unable to load the specified datastore".into()))
 			}
 		};
+		// Create a live query notification channel
+		let (send, recv) = channel::bounded(100);
 		inner.map(|inner| Self {
+			id: node_id,
 			inner,
+			send,
+			recv,
 			query_timeout: None,
 		})
 	}
@@ -215,6 +249,210 @@ impl Datastore {
 		self.query_timeout = duration;
 		self
 	}
+
+	/// Creates a new datastore instance
+	///
+	/// Use this for clustered environments.
+	pub async fn new_with_bootstrap(path: &str) -> Result<Datastore, Error> {
+		let ds = Datastore::new(path).await?;
+		ds.bootstrap().await?;
+		Ok(ds)
+	}
+
+	// Initialise bootstrap with implicit values intended for runtime
+	pub async fn bootstrap(&self) -> Result<(), Error> {
+		self.bootstrap_full(&self.id).await
+	}
+
+	// Initialise bootstrap with artificial values, intended for testing
+	pub async fn bootstrap_full(&self, node_id: &Uuid) -> Result<(), Error> {
+		trace!(target: LOG, "Bootstrapping {}", self.id);
+		let mut tx = self.transaction(true, false).await?;
+		let now = tx.clock();
+		let archived = self.register_remove_and_archive(&mut tx, node_id, now).await?;
+		tx.commit().await?;
+
+		let mut tx = self.transaction(true, false).await?;
+		self.remove_archived(&mut tx, archived).await?;
+		Ok(tx.commit().await?)
+	}
+
+	// Node registration + "mark" stage of mark-and-sweep gc
+	pub async fn register_remove_and_archive(
+		&self,
+		tx: &mut Transaction,
+		node_id: &Uuid,
+		timestamp: Timestamp,
+	) -> Result<Vec<LqValue>, Error> {
+		trace!("Registering node {}", node_id);
+		self.register_membership(tx, node_id, &timestamp).await?;
+		// Determine the timeout for when a cluster node is expired
+		let ts_expired = (timestamp.clone() - std::time::Duration::from_secs(5))?;
+		let dead = self.remove_dead_nodes(tx, &ts_expired).await?;
+		Ok(self.archive_dead_lqs(tx, &dead, node_id).await?)
+	}
+
+	// Adds entries to the KV store indicating membership information
+	pub async fn register_membership(
+		&self,
+		tx: &mut Transaction,
+		node_id: &Uuid,
+		timestamp: &Timestamp,
+	) -> Result<(), Error> {
+		tx.set_cl(node_id.clone()).await?;
+		tx.set_hb(timestamp.clone(), sql::Uuid::from(node_id.clone())).await?;
+		Ok(())
+	}
+
+	/// Delete dead heartbeats and nodes
+	/// Returns node IDs
+	pub async fn remove_dead_nodes(
+		&self,
+		tx: &mut Transaction,
+		ts: &Timestamp,
+	) -> Result<Vec<Uuid>, Error> {
+		let hbs = self.delete_dead_heartbeats(tx, ts).await?;
+		let mut nodes = vec![];
+		for hb in hbs {
+			trace!("Deleting node {}", &hb.nd);
+			tx.del_cl(hb.nd.clone()).await?;
+			nodes.push(hb.nd);
+		}
+		Ok(nodes)
+	}
+
+	/// Accepts cluster IDs
+	/// Archives related live queries
+	/// Returns live query keys that can be used for deletes
+	///
+	/// The reason we archive first is to stop other nodes from picking it up for further updates
+	/// This means it will be easier to wipe the range in a subsequent transaction
+	pub async fn archive_dead_lqs(
+		&self,
+		tx: &mut Transaction,
+		nodes: &Vec<Uuid>,
+		this_node_id: &Uuid,
+	) -> Result<Vec<LqValue>, Error> {
+		let mut archived = vec![];
+		for nd in nodes.iter() {
+			trace!("Archiving node {}", &nd);
+			// Scan on node prefix for LQ space
+			let node_lqs = tx.scan_lq(nd, 1000).await?;
+			trace!(target: LOG, "Found {} LQ entries for {:?}", node_lqs.len(), nd);
+			for lq in node_lqs {
+				trace!("Archiving query {:?}", &lq);
+				let node_archived_lqs = self.archive_lv_for_node(tx, &lq.cl, this_node_id).await?;
+				for lq_value in node_archived_lqs {
+					archived.push(lq_value);
+				}
+			}
+		}
+		Ok(archived)
+	}
+
+	pub async fn remove_archived(
+		&self,
+		tx: &mut Transaction,
+		archived: Vec<LqValue>,
+	) -> Result<(), Error> {
+		for lq in archived {
+			// Delete the cluster key, used for finding LQ associated with a node
+			tx.del(lq::new(&lq.cl, lq.ns.as_str(), lq.db.as_str(), &lq.lq)).await?;
+			// Delete the table key, used for finding LQ associated with a table
+			tx.del(Lv::new(lq.ns.as_str(), lq.db.as_str(), lq.tb.as_str(), lq.lq)).await?;
+		}
+		Ok(())
+	}
+
+	pub async fn garbage_collect(
+		// TODO not invoked
+		// But this is garbage collection outside of bootstrap
+		&self,
+		tx: &mut Transaction,
+		watermark: &Timestamp,
+		this_node_id: &Uuid,
+	) -> Result<(), Error> {
+		let dead_heartbeats = self.delete_dead_heartbeats(tx, watermark).await?;
+		trace!("Found dead hbs: {:?}", dead_heartbeats);
+		let mut archived: Vec<LqValue> = vec![];
+		for hb in dead_heartbeats {
+			let new_archived = self.archive_lv_for_node(tx, &hb.nd, this_node_id).await?;
+			tx.del_cl(hb.nd).await?;
+			trace!("Deleted node {}", hb.nd);
+			for lq_value in new_archived {
+				archived.push(lq_value);
+			}
+		}
+		Ok(())
+	}
+
+	// Returns a list of live query IDs
+	pub async fn archive_lv_for_node(
+		&self,
+		tx: &mut Transaction,
+		nd: &Uuid,
+		this_node_id: &Uuid,
+	) -> Result<Vec<LqValue>, Error> {
+		let lqs = tx.all_lq(nd).await?;
+		trace!("Archiving lqs and found {} LQ entries for {}", lqs.len(), nd);
+		let mut ret = vec![];
+		for lq in lqs {
+			// let tb = tx.get_lq(&lq.cl, lq.ns.as_str(), lq.db.as_str(), l).await?;
+			let lvs = tx.get_lv(lq.ns.as_str(), lq.db.as_str(), lq.tb.as_str(), &lq.lq).await?;
+			let archived_lvs = lvs.clone().archive(this_node_id.clone());
+			tx.putc_lv(&lq.ns, &lq.db, &lq.tb, archived_lvs, Some(lvs)).await?;
+			ret.push(lq);
+		}
+		Ok(ret)
+	}
+
+	// Accepts a lqid, deletes parent entry and notifications
+	pub async fn delete_lv(&self, _lq: Uuid) -> Result<(), Error> {
+		// open tx
+		// find the live queries for node id
+		// mark the live queries as archived
+		// close tx
+		// open tx
+		Ok(())
+	}
+
+	pub async fn delete_dead_heartbeats(
+		&self,
+		tx: &mut Transaction,
+		ts: &Timestamp,
+	) -> Result<Vec<Hb>, Error> {
+		let limit = 1000;
+		let dead = tx.scan_hb(&ts, limit).await?;
+		tx.delr_hb(dead.clone(), 1000).await?;
+		for dead_node in dead.clone() {
+			tx.del_cl(dead_node.nd).await?;
+		}
+		Ok::<Vec<Hb>, Error>(dead)
+	}
+
+	// Creates a heartbeat entry for the member indicating to the cluster
+	// that the node is alive.
+	pub async fn heartbeat(&self) -> Result<(), Error> {
+		let mut tx = self.transaction(true, false).await?;
+		let timestamp = tx.clock();
+		self.heartbeat_full(&mut tx, timestamp, &self.id).await?;
+		Ok(tx.commit().await?)
+	}
+
+	// Creates a heartbeat entry for the member indicating to the cluster
+	// that the node is alive. Intended for testing.
+	pub async fn heartbeat_full(
+		&self,
+		tx: &mut Transaction,
+		timestamp: Timestamp,
+		node_id: &Uuid,
+	) -> Result<(), Error> {
+		Ok(tx.set_hb(timestamp, sql::Uuid::from(node_id.clone())).await?)
+	}
+
+	// -----
+	// End cluster helpers, storage functions here
+	// -----
 
 	/// Create a new transaction on this datastore
 	///
@@ -299,7 +537,7 @@ impl Datastore {
 		strict: bool,
 	) -> Result<Vec<Response>, Error> {
 		// Create a new query options
-		let mut opt = Options::default();
+		let mut opt = Options::new(self.id.clone(), self.send.clone(), sess.au.as_ref().clone());
 		// Create a new query executor
 		let mut exe = Executor::new(self);
 		// Create a default context
@@ -314,6 +552,8 @@ impl Datastore {
 		let ctx = vars.attach(ctx)?;
 		// Parse the SQL query text
 		let ast = sql::parse(txt)?;
+		// Setup the notification channel
+		opt.sender = self.send.clone();
 		// Setup the auth options
 		opt.auth = sess.au.clone();
 		// Setup the live options
@@ -353,7 +593,7 @@ impl Datastore {
 		strict: bool,
 	) -> Result<Vec<Response>, Error> {
 		// Create a new query options
-		let mut opt = Options::default();
+		let mut opt = Options::new(self.id.clone(), self.send.clone(), sess.au.as_ref().clone());
 		// Create a new query executor
 		let mut exe = Executor::new(self);
 		// Create a default context
@@ -366,6 +606,8 @@ impl Datastore {
 		let ctx = sess.context(ctx);
 		// Store the query variables
 		let ctx = vars.attach(ctx)?;
+		// Setup the notification channel
+		opt.sender = self.send.clone();
 		// Setup the auth options
 		opt.auth = sess.au.clone();
 		// Setup the live options
@@ -405,12 +647,12 @@ impl Datastore {
 		vars: Variables,
 		strict: bool,
 	) -> Result<Value, Error> {
-		// Start a new transaction
-		let txn = self.transaction(val.writeable(), false).await?;
-		//
-		let txn = Arc::new(Mutex::new(txn));
 		// Create a new query options
-		let mut opt = Options::default();
+		let mut opt = Options::new(self.id.clone(), self.send.clone(), sess.au.as_ref().clone());
+		// Create a new query options
+		let txn = self.transaction(val.writeable(), false).await?;
+		// Wrap transaction safely
+		let txn = Arc::new(Mutex::new(txn));
 		// Create a default context
 		let mut ctx = Context::default();
 		// Set the global query timeout
@@ -421,6 +663,8 @@ impl Datastore {
 		let ctx = sess.context(ctx);
 		// Store the query variables
 		let ctx = vars.attach(ctx)?;
+		// Setup the notification channel
+		opt.sender = self.send.clone();
 		// Setup the auth options
 		opt.auth = sess.au.clone();
 		// Set current NS and DB
@@ -437,6 +681,28 @@ impl Datastore {
 		};
 		// Return result
 		Ok(res)
+	}
+
+	/// Subscribe to live notifications
+	///
+	/// ```rust,no_run
+	/// use surrealdb::kvs::Datastore;
+	/// use surrealdb::err::Error;
+	/// use surrealdb::dbs::Session;
+	///
+	/// #[tokio::main]
+	/// async fn main() -> Result<(), Error> {
+	///     let ds = Datastore::new("memory").await?;
+	///     let ses = Session::for_kv();
+	///     while let Ok(v) = ds.notifications().recv().await {
+	///         println!("Received notification: {v}");
+	///     }
+	///     Ok(())
+	/// }
+	/// ```
+	#[instrument(skip_all)]
+	pub fn notifications(&self) -> Receiver<Notification> {
+		self.recv.clone()
 	}
 
 	/// Performs a full database export as SQL
