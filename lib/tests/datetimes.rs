@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn datetimes_conversion() -> Result<(), Error> {
 	let sql = r#"
 		SELECT * FROM "2012-01-01";

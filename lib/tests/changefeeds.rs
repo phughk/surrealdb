@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn table_change_feeds() -> Result<(), Error> {
 	let sql = "
         DEFINE TABLE person CHANGEFEED 1h;

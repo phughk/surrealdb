@@ -136,12 +136,14 @@ mod api_integration {
 		}
 
 		#[tokio::test]
+		#[serial]
 		async fn memory_allowed_as_address() {
 			init_logger();
 			any::connect("memory").await.unwrap();
 		}
 
 		#[tokio::test]
+		#[serial]
 		async fn signin_first_not_necessary() {
 			init_logger();
 			let db = Surreal::new::<Mem>(()).await.unwrap();
@@ -153,6 +155,7 @@ mod api_integration {
 		}
 
 		#[tokio::test]
+		#[serial]
 		async fn cant_sign_into_default_root_account() {
 			init_logger();
 			let db = Surreal::new::<Mem>(()).await.unwrap();
@@ -167,6 +170,7 @@ mod api_integration {
 		}
 
 		#[tokio::test]
+		#[serial]
 		async fn credentials_activate_authentication() {
 			init_logger();
 			let db = Surreal::new::<Mem>(Root {
@@ -183,6 +187,7 @@ mod api_integration {
 		}
 
 		#[tokio::test]
+		#[serial]
 		async fn surreal_clone() {
 			use surrealdb::engine::any::Any;
 

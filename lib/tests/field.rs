@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn field_definition_value_assert_failure() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE person SCHEMAFULL;
@@ -93,6 +94,7 @@ async fn field_definition_value_assert_failure() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn field_definition_value_assert_success() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE person SCHEMAFULL;
@@ -135,6 +137,7 @@ async fn field_definition_value_assert_success() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn field_definition_empty_nested_objects() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE person SCHEMAFULL;
@@ -187,6 +190,7 @@ async fn field_definition_empty_nested_objects() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn field_definition_empty_nested_arrays() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE person SCHEMAFULL;
@@ -241,6 +245,7 @@ async fn field_definition_empty_nested_arrays() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn field_definition_empty_nested_flexible() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE person SCHEMAFULL;

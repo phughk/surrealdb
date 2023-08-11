@@ -7,6 +7,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn create_with_id() -> Result<(), Error> {
 	let sql = "
 		CREATE person:test SET name = 'Tester';
@@ -136,6 +137,7 @@ async fn create_with_id() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn create_on_none_values_with_unique_index() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX national_id_idx ON foo FIELDS national_id UNIQUE;
@@ -155,6 +157,7 @@ async fn create_on_none_values_with_unique_index() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn create_with_unique_index_with_two_flattened_fields() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, tags…, emails... UNIQUE;
@@ -190,6 +193,7 @@ async fn create_with_unique_index_with_two_flattened_fields() -> Result<(), Erro
 }
 
 #[tokio::test]
+#[serial]
 async fn create_with_unique_index_with_one_flattened_field() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, tags, emails... UNIQUE;
@@ -216,6 +220,7 @@ async fn create_with_unique_index_with_one_flattened_field() -> Result<(), Error
 }
 
 #[tokio::test]
+#[serial]
 async fn create_with_unique_index_on_one_field_with_flattened_sub_values() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, tags, emails.*.value… UNIQUE;
@@ -242,6 +247,7 @@ async fn create_with_unique_index_on_one_field_with_flattened_sub_values() -> Re
 }
 
 #[tokio::test]
+#[serial]
 async fn create_with_unique_index_on_two_fields() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, tags, emails UNIQUE;
@@ -386,6 +392,7 @@ async fn common_permissions_checks(auth_enabled: bool) {
 }
 
 #[tokio::test]
+#[serial]
 async fn check_permissions_auth_enabled() {
 	let auth_enabled = true;
 	//
@@ -465,6 +472,7 @@ async fn check_permissions_auth_enabled() {
 }
 
 #[tokio::test]
+#[serial]
 async fn check_permissions_auth_disabled() {
 	let auth_enabled = false;
 	//

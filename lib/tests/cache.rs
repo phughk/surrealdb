@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn clear_transaction_cache_table() -> Result<(), Error> {
 	let sql = "
 		BEGIN;
@@ -60,6 +61,7 @@ async fn clear_transaction_cache_table() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn clear_transaction_cache_field() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON person TYPE option<string> VALUE 'test';

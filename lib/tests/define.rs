@@ -14,6 +14,7 @@ use surrealdb::sql::Idiom;
 use surrealdb::sql::{Part, Value};
 
 #[tokio::test]
+#[serial]
 async fn define_statement_namespace() -> Result<(), Error> {
 	let sql = "
 		DEFINE NAMESPACE test;
@@ -40,6 +41,7 @@ async fn define_statement_namespace() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_database() -> Result<(), Error> {
 	let sql = "
 		DEFINE DATABASE test;
@@ -68,6 +70,7 @@ async fn define_statement_database() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_function() -> Result<(), Error> {
 	let sql = "
 		DEFINE FUNCTION fn::test($first: string, $last: string) {
@@ -104,6 +107,7 @@ async fn define_statement_function() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_table_drop() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE test DROP;
@@ -136,6 +140,7 @@ async fn define_statement_table_drop() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_table_schemaless() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE test SCHEMALESS;
@@ -168,6 +173,7 @@ async fn define_statement_table_schemaless() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_table_schemafull() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE test SCHEMAFUL;
@@ -204,6 +210,7 @@ async fn define_statement_table_schemafull() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_table_schemaful() -> Result<(), Error> {
 	let sql = "
 		DEFINE TABLE test SCHEMAFUL;
@@ -236,6 +243,7 @@ async fn define_statement_table_schemaful() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_event() -> Result<(), Error> {
 	let sql = "
 		DEFINE EVENT test ON user WHEN true THEN (
@@ -293,6 +301,7 @@ async fn define_statement_event() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_event_when_event() -> Result<(), Error> {
 	let sql = "
 		DEFINE EVENT test ON user WHEN $event = 'CREATE' THEN (
@@ -350,6 +359,7 @@ async fn define_statement_event_when_event() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_event_when_logic() -> Result<(), Error> {
 	let sql = "
 		DEFINE EVENT test ON user WHEN $before.email != $after.email THEN (
@@ -407,6 +417,7 @@ async fn define_statement_event_when_logic() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_field() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON user;
@@ -439,6 +450,7 @@ async fn define_statement_field() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_field_type() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON user TYPE string;
@@ -471,6 +483,7 @@ async fn define_statement_field_type() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_field_value() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON user VALUE $value OR 'GBR';
@@ -503,6 +516,7 @@ async fn define_statement_field_value() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_field_assert() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON user ASSERT $value != NONE AND $value = /[A-Z]{3}/;
@@ -535,6 +549,7 @@ async fn define_statement_field_assert() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_field_type_value_assert() -> Result<(), Error> {
 	let sql = "
 		DEFINE FIELD test ON user TYPE string VALUE $value OR 'GBR' ASSERT $value != NONE AND $value = /[A-Z]{3}/;
@@ -567,6 +582,7 @@ async fn define_statement_field_type_value_assert() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_single_simple() -> Result<(), Error> {
 	let sql = "
 		CREATE user:1 SET age = 23;
@@ -617,6 +633,7 @@ async fn define_statement_index_single_simple() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_single() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS email;
@@ -659,6 +676,7 @@ async fn define_statement_index_single() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_multiple() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, email;
@@ -711,6 +729,7 @@ async fn define_statement_index_multiple() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_single_unique() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS email UNIQUE;
@@ -764,6 +783,7 @@ async fn define_statement_index_single_unique() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_multiple_unique() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, email UNIQUE;
@@ -845,6 +865,7 @@ async fn define_statement_index_multiple_unique() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_single_unique_existing() -> Result<(), Error> {
 	let sql = "
 		CREATE user:1 SET email = 'info@surrealdb.com';
@@ -891,6 +912,7 @@ async fn define_statement_index_single_unique_existing() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_multiple_unique_existing() -> Result<(), Error> {
 	let sql = "
 		CREATE user:1 SET account = 'apple', email = 'test@surrealdb.com';
@@ -938,6 +960,7 @@ async fn define_statement_index_multiple_unique_existing() -> Result<(), Error> 
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_single_unique_embedded_multiple() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS tags UNIQUE;
@@ -986,6 +1009,7 @@ async fn define_statement_index_single_unique_embedded_multiple() -> Result<(), 
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_index_multiple_unique_embedded_multiple() -> Result<(), Error> {
 	let sql = "
 		DEFINE INDEX test ON user FIELDS account, tags UNIQUE;
@@ -1050,6 +1074,7 @@ async fn define_statement_index_multiple_unique_embedded_multiple() -> Result<()
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_analyzer() -> Result<(), Error> {
 	let sql = "
 		DEFINE ANALYZER english TOKENIZERS blank,class FILTERS lowercase,snowball(english);
@@ -1089,6 +1114,7 @@ async fn define_statement_analyzer() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_search_index() -> Result<(), Error> {
 	let sql = r#"
 		CREATE blog:1 SET title = 'Understanding SurrealQL and how it is different from PostgreSQL';
@@ -1148,6 +1174,7 @@ async fn define_statement_search_index() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_user_root() -> Result<(), Error> {
 	let sql = "
 		DEFINE USER test ON ROOT PASSWORD 'test';
@@ -1175,6 +1202,7 @@ async fn define_statement_user_root() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_user_ns() -> Result<(), Error> {
 	let dbs = Datastore::new("memory").await?;
 	let ses = Session::owner();
@@ -1231,6 +1259,7 @@ async fn define_statement_user_ns() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn define_statement_user_db() -> Result<(), Error> {
 	let dbs = Datastore::new("memory").await?;
 	let ses = Session::owner();
@@ -1304,6 +1333,7 @@ where
 //
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_ns() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1346,6 +1376,7 @@ async fn permissions_checks_define_ns() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_db() {
 	let scenario =
 		HashMap::from([("prepare", ""), ("test", "DEFINE DATABASE DB"), ("check", "INFO FOR NS")]);
@@ -1387,6 +1418,7 @@ async fn permissions_checks_define_db() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_function() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1429,6 +1461,7 @@ async fn permissions_checks_define_function() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_analyzer() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1471,6 +1504,7 @@ async fn permissions_checks_define_analyzer() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_token_ns() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1513,6 +1547,7 @@ async fn permissions_checks_define_token_ns() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_token_db() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1555,6 +1590,7 @@ async fn permissions_checks_define_token_db() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_user_root() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1597,6 +1633,7 @@ async fn permissions_checks_define_user_root() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_user_ns() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1639,6 +1676,7 @@ async fn permissions_checks_define_user_ns() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_user_db() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1681,6 +1719,7 @@ async fn permissions_checks_define_user_db() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_scope() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1723,6 +1762,7 @@ async fn permissions_checks_define_scope() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_param() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1765,6 +1805,7 @@ async fn permissions_checks_define_param() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_table() {
 	let scenario =
 		HashMap::from([("prepare", ""), ("test", "DEFINE TABLE TB"), ("check", "INFO FOR DB")]);
@@ -1804,6 +1845,7 @@ async fn permissions_checks_define_table() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_event() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1846,6 +1888,7 @@ async fn permissions_checks_define_event() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_field() {
 	let scenario = HashMap::from([
 		("prepare", ""),
@@ -1888,6 +1931,7 @@ async fn permissions_checks_define_field() {
 }
 
 #[tokio::test]
+#[serial]
 async fn permissions_checks_define_index() {
 	let scenario = HashMap::from([
 		("prepare", ""),

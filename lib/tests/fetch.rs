@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn create_relate_select() -> Result<(), Error> {
 	let sql = "
 		CREATE user:tobie SET name = 'Tobie';

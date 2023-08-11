@@ -7,6 +7,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn delete() -> Result<(), Error> {
 	let sql = "
 		CREATE person:test SET name = 'Tester';
@@ -174,6 +175,7 @@ async fn common_permissions_checks(auth_enabled: bool) {
 }
 
 #[tokio::test]
+#[serial]
 async fn check_permissions_auth_enabled() {
 	let auth_enabled = true;
 	//
@@ -273,6 +275,7 @@ async fn check_permissions_auth_enabled() {
 }
 
 #[tokio::test]
+#[serial]
 async fn check_permissions_auth_disabled() {
 	let auth_enabled = false;
 	//

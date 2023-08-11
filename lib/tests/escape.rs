@@ -6,6 +6,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn complex_ids() -> Result<(), Error> {
 	let sql = r#"
 		CREATE person:100 SET test = 'One';
@@ -86,6 +87,7 @@ async fn complex_ids() -> Result<(), Error> {
 }
 
 #[tokio::test]
+#[serial]
 async fn complex_strings() -> Result<(), Error> {
 	let sql = r#"
 		RETURN 'String with no complex characters';

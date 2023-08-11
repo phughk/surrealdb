@@ -5,6 +5,7 @@ use surrealdb::kvs::Datastore;
 use surrealdb::sql::Value;
 
 #[tokio::test]
+#[serial]
 async fn compare_empty() -> Result<(), Error> {
 	let sql = r#"
 		RETURN NONE = NONE;
