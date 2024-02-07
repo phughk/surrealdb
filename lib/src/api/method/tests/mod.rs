@@ -50,6 +50,16 @@ async fn api() {
 		})
 		.await
 		.unwrap();
+	//
+	// // signup to namespace
+	// let _: Jwt = DB
+	// 	.signup(Namespace {
+	// 		namespace: "test-ns",
+	// 		username: "namespace-user",
+	// 		password: "namespace-pass",
+	// 	})
+	// 	.await
+	// 	.unwrap();
 
 	// signin
 	let _: Jwt = DB
@@ -59,6 +69,14 @@ async fn api() {
 		})
 		.await
 		.unwrap();
+	// let _: Jwt = DB
+	// 	.signin(Namespace {
+	// 		namespace: "test-ns",
+	// 		username: "namespace-user",
+	// 		password: "namespace-pass",
+	// 	})
+	// 	.await
+	// 	.unwrap();
 	let _: Jwt = DB
 		.signin(Namespace {
 			namespace: "test-ns",
