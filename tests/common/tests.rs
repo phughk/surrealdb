@@ -996,7 +996,7 @@ async fn session_expiration() {
 	let res = socket.send_message_query("SELECT VALUE working FROM test:1").await.unwrap();
 	assert_eq!(res[0]["result"], json!(["yes"]), "result: {:?}", res);
 	// Wait two seconds for token to expire
-	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(2)).await;
 	// Check that the session has expired and queries fail
 	let res = socket.send_request("query", json!(["SELECT VALUE working FROM test:1",])).await;
 	assert!(res.is_ok(), "result: {:?}", res);
@@ -1106,7 +1106,7 @@ async fn session_expiration_operations() {
 	let res = socket.send_message_query("SELECT VALUE working FROM test:1").await.unwrap();
 	assert_eq!(res[0]["result"], json!(["yes"]), "result: {:?}", res);
 	// Wait two seconds for the session to expire
-	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(2)).await;
 	// Check if the session is now expired
 	let res = socket.send_request("query", json!(["SELECT VALUE working FROM test:1",])).await;
 	assert!(res.is_ok(), "result: {:?}", res);
@@ -1233,7 +1233,7 @@ async fn session_expiration_operations() {
 	// Verify response contains no error
 	assert!(res.keys().all(|k| ["id", "result"].contains(&k.as_str())), "result: {:?}", res);
 	// Wait two seconds for the session to expire
-	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(2)).await;
 	// The session must be expired now or we fail the test
 	let res = socket.send_request("query", json!(["SELECT VALUE working FROM test:1",])).await;
 	assert!(res.is_ok(), "result: {:?}", res);
@@ -1265,7 +1265,7 @@ async fn session_expiration_operations() {
 	// Verify response contains no error
 	assert!(res.keys().all(|k| ["id", "result"].contains(&k.as_str())), "result: {:?}", res);
 	// Wait two seconds for the session to expire
-	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(2)).await;
 	// The session must be expired now or we fail the test
 	let res = socket.send_request("query", json!(["SELECT VALUE working FROM test:1",])).await;
 	assert!(res.is_ok(), "result: {:?}", res);
@@ -1447,7 +1447,7 @@ async fn session_reauthentication_expired() {
 	// Authenticate using the scope token, which will expire soon
 	socket.send_request("authenticate", json!([res,])).await.unwrap();
 	// Wait two seconds for token to expire
-	tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(2)).await;
 	// Verify that the session has expired
 	let res = socket.send_request("query", json!(["SELECT VALUE working FROM test:1",])).await;
 	assert!(res.is_ok(), "result: {:?}", res);
